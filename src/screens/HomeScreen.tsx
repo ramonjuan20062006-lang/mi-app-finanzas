@@ -1,13 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { RefreshCw, ShoppingCart, TrendingDown, Package, Crown, ArrowRight, Tag, FileText, Landmark, ChartBar as BarChart2, Users, Truck, UserCog } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function HomeScreen() {
-  const { user, rates, refreshRates, setTab, setModal, isFeaturePremium } = useStore()
+  const { user, rates, refreshRates, setTab, setModal, isFeaturePremium, setPremiumGate } = useStore()
   const isPremium = user?.plan === 'premium'
   const [amount, setAmount]       = useState('')
   const [converted, setConverted] = useState<number | null>(null)
   const [rateType, setRateType]   = useState<'bcv' | 'hoy' | 'euro'>('bcv')
+  const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => {
+    // Refresh rates every 5 minutes while on home screen
+    const id = setInterval(() => refreshRates(), 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [refreshRates])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await refreshRates()
+    setRefreshing(false)
+  }
 
   const handleConvert = () => {
     const n = parseFloat(amount)
@@ -18,7 +31,7 @@ export default function HomeScreen() {
 
   const guardPremium = (label: string, featureId: string, action: () => void) => {
     if (isFeaturePremium(featureId)) {
-      alert(`"${label}" requiere Plan Premium.\nContacta al administrador para activar tu plan.`)
+      setPremiumGate(label)
     } else {
       action()
     }
@@ -68,11 +81,12 @@ export default function HomeScreen() {
             <p className="text-[11px] opacity-70">Actualizado: {rates.updatedAt}</p>
           </div>
           <button
-            onClick={refreshRates}
-            className="flex items-center gap-1.5 text-xs bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all active:scale-95"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center gap-1.5 text-xs bg-white/20 px-3 py-1.5 rounded-lg hover:bg-white/30 transition-all active:scale-95 disabled:opacity-60"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Actualizar
+            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+            {refreshing ? 'Cargando...' : 'Actualizar'}
           </button>
         </div>
 

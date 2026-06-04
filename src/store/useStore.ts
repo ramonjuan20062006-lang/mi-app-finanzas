@@ -76,7 +76,8 @@ interface Rates {
 }
 
 /* ── Edge-function helpers ────────────────────────────────────────────────── */
-const EDGE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-actions`
+const EDGE       = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-actions`
+const RATES_EDGE = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/exchange-rates`
 const edgeHeaders = () => ({
   Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
   'Content-Type': 'application/json',
@@ -100,7 +101,11 @@ interface AppState {
 
   /* rates */
   rates: Rates
-  refreshRates: () => void
+  refreshRates: () => Promise<void>
+
+  /* premium gate */
+  premiumGate: string | null
+  setPremiumGate: (label: string | null) => void
 
   /* data */
   sales: Sale[]
@@ -144,14 +149,24 @@ interface AppState {
   setModal: (m: AppState['modal']) => void
 }
 
-/* ── Simulated rates — Venezuelan bolívar is 3-digit territory ───────────── */
-function simulateRates(): Rates {
-  const v = () => (Math.random() - 0.5) * 1.5
+/* ── Fallback rates (last known real values) ──────────────────────────────── */
+function fallbackRates(): Rates {
   return {
-    bcv:      parseFloat((46.23 + v()).toFixed(2)),
-    dolarHoy: parseFloat((47.80 + v()).toFixed(2)),
-    euro:     parseFloat((50.95 + v()).toFixed(2)),
+    bcv:      558.64,
+    dolarHoy: 740.20,
+    euro:     648.24,
     updatedAt: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
+  }
+}
+
+async function fetchLiveRates(): Promise<Rates> {
+  try {
+    const res = await fetch(RATES_EDGE, { signal: AbortSignal.timeout(8000) })
+    if (!res.ok) throw new Error('rates fetch failed')
+    const data = await res.json()
+    return { bcv: data.bcv, dolarHoy: data.dolarHoy, euro: data.euro, updatedAt: data.updatedAt }
+  } catch {
+    return fallbackRates()
   }
 }
 
@@ -195,7 +210,7 @@ export const useStore = create<AppState>((set, get) => ({
       await supabase.from('profiles').insert(np)
       set({ user: np, isLoggedIn: true })
     }
-    await Promise.all([get().loadPremiumFeatures(), get().loadAppPlans()])
+    await Promise.all([get().loadPremiumFeatures(), get().loadAppPlans(), get().refreshRates()])
   },
 
   pollStatus: async () => {
@@ -213,8 +228,15 @@ export const useStore = create<AppState>((set, get) => ({
   setTab: (t) => set({ tab: t }),
 
   /* rates ------------------------------------------------------------------ */
-  rates: simulateRates(),
-  refreshRates: () => set({ rates: simulateRates() }),
+  rates: fallbackRates(),
+  refreshRates: async () => {
+    const rates = await fetchLiveRates()
+    set({ rates })
+  },
+
+  /* premium gate ----------------------------------------------------------- */
+  premiumGate: null,
+  setPremiumGate: (label) => set({ premiumGate: label }),
 
   /* data ------------------------------------------------------------------- */
   sales: [], expenses: [], debts: [], inventory: [],

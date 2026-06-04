@@ -7,6 +7,7 @@ import BalanceScreen from '../screens/BalanceScreen'
 import DebtsScreen from '../screens/DebtsScreen'
 import InventoryScreen from '../screens/InventoryScreen'
 import AdminPanel from './AdminPanel'
+import PremiumGateModal from './PremiumGateModal'
 import SaleModal from '../modals/SaleModal'
 import ExpenseModal from '../modals/ExpenseModal'
 import ProductModal from '../modals/ProductModal'
@@ -46,6 +47,7 @@ export default function AppShell() {
       </main>
       <BottomNav />
       <AdminPanel />
+      <PremiumGateModal />
       <SaleModal />
       <ExpenseModal />
       <ProductModal />

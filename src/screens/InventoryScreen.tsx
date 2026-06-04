@@ -26,8 +26,8 @@ export default function InventoryScreen() {
     }
   }, [inventory.length, user, addProduct])
 
-  const totalRefs = inventory.length
-  const totalCost = inventory.reduce((s, i) => s + Number(i.cost ?? 0), 0)
+  const totalRefs  = inventory.length
+  const totalCost  = inventory.reduce((s, i) => s + Number(i.cost ?? 0), 0)
   const totalValue = inventory.reduce((s, i) => s + Number(i.price ?? 0) * Number(i.stock ?? 0), 0)
 
   const sorted = [...inventory].sort((a, b) => {
@@ -41,12 +41,10 @@ export default function InventoryScreen() {
   const handleDelete = async (item: InventoryItem) => {
     if (!confirm(`¿Eliminar "${item.name}" del inventario?`)) return
     setDeleting(item.id)
+    if (detailId === item.id) setDetailId(null)
     await deleteProduct(item.id)
     setDeleting(null)
-    if (detailId === item.id) setDetailId(null)
   }
-
-  const detail = inventory.find(i => i.id === detailId)
 
   return (
     <div className="px-4 py-4 space-y-4">
@@ -124,8 +122,8 @@ export default function InventoryScreen() {
         {filtered.map(item => (
           <div key={item.id} className="bg-white rounded-xl border border-blue-100 shadow-sm overflow-hidden">
             <div className="p-3 flex items-center gap-3">
-              <div className="w-11 h-11 bg-violet-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Package className="w-5 h-5 text-violet-500" />
+              <div className="w-11 h-11 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                <Package className="w-5 h-5 text-blue-500" />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-blue-900 truncate">{item.name}</p>
@@ -147,15 +145,15 @@ export default function InventoryScreen() {
                 <button
                   onClick={() => handleDelete(item)}
                   disabled={deleting === item.id}
-                  className="p-1.5 hover:bg-red-50 rounded-lg transition-colors"
+                  className="p-1.5 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-40"
                 >
-                  <Trash2 className="w-4 h-4 text-red-400" />
+                  <Trash2 className={`w-4 h-4 ${deleting === item.id ? 'text-red-200' : 'text-red-400'}`} />
                 </button>
               </div>
             </div>
             {/* Expanded detail */}
-            {detailId === item.id && detail && (
-              <div className="border-t border-blue-50 px-4 py-3 bg-blue-50/40 animate-fade-in">
+            {detailId === item.id && (
+              <div className="border-t border-blue-50 px-4 py-3 bg-blue-50/40">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                   <div><span className="text-blue-400">Categoría:</span> <strong className="text-blue-800">{item.category || '—'}</strong></div>
                   <div><span className="text-blue-400">Costo:</span> <strong className="text-blue-800">${item.cost ?? 0}</strong></div>
