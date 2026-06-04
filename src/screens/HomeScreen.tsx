@@ -1,8 +1,5 @@
 import { useState } from 'react'
-import {
-  RefreshCw, ShoppingCart, TrendingDown, Package, Crown, ArrowRight,
-  Tag, FileText, Landmark, BarChart3, Users, Truck, UserCog,
-} from 'lucide-react'
+import { RefreshCw, ShoppingCart, TrendingDown, Package, Crown, ArrowRight, Tag, FileText, Landmark, ChartBar as BarChart3, Users, Truck, UserCog } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function HomeScreen() {

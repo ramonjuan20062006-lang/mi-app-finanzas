@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Download, ShoppingCart, Edit3, Info, Crown, Package } from 'lucide-react'
+import { Download, ShoppingCart, CreditCard as Edit3, Info, Crown, Package } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 const SEED = [

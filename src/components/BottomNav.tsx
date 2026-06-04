@@ -1,4 +1,4 @@
-import { Home, BarChart3, Landmark, Package } from 'lucide-react'
+import { Hop as Home, ChartBar as BarChart3, Landmark, Package } from 'lucide-react'
 import { useStore, type Tab } from '../store/useStore'
 
 const TABS: { id: Tab; label: string; Icon: React.FC<{ className?: string }> }[] = [

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, Loader as Loader2 } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function LoginScreen() {

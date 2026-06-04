@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { HelpCircle, Bell, Search, Settings, LogOut, Shield } from 'lucide-react'
+import { Circle as HelpCircle, Bell, Search, Settings, LogOut, Shield } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 export default function Header() {

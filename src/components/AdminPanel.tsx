@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { X, Shield, Crown, Loader2 } from 'lucide-react'
+import { X, Shield, Crown, Loader as Loader2 } from 'lucide-react'
 import { useStore, type Plan } from '../store/useStore'
 
 export default function AdminPanel() {

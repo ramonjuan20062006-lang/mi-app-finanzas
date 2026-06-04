@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import {
-  TrendingUp, TrendingDown, Filter, Calendar, Download, Eye,
-  Clock, Plus, Minus,
-} from 'lucide-react'
+import { TrendingUp, TrendingDown, ListFilter as Filter, Calendar, Download, Eye, Clock, Plus, Minus } from 'lucide-react'
 import { useStore } from '../store/useStore'
 
 function todayStr() {
