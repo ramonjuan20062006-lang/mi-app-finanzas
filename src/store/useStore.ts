@@ -51,6 +51,23 @@ export interface InventoryItem {
   created_at: string
 }
 
+export interface AppPlan {
+  id: string
+  name: string
+  price: number
+  discount: number
+  description: string
+  features: string[]
+  is_active: boolean
+  sort_order: number
+}
+
+export interface PremiumFeature {
+  id: string
+  label: string
+  requires_premium: boolean
+}
+
 interface Rates {
   bcv: number
   dolarHoy: number
@@ -98,6 +115,17 @@ interface AppState {
   addExpense: (d: { description: string; amount: number; date: string }) => Promise<void>
   addDebt: (d: { description: string; amount: number; type: 'receivable' | 'payable'; contact_name: string; date: string }) => Promise<void>
   addProduct: (d: { name: string; price: number; cost: number; stock: number; is_available: boolean; category: string }) => Promise<void>
+  deleteSale: (id: string) => Promise<void>
+  deleteExpense: (id: string) => Promise<void>
+  deleteDebt: (id: string) => Promise<void>
+  deleteProduct: (id: string) => Promise<void>
+
+  /* plans & features (public read) */
+  appPlans: AppPlan[]
+  premiumFeatures: PremiumFeature[]
+  loadAppPlans: () => Promise<void>
+  loadPremiumFeatures: () => Promise<void>
+  isFeaturePremium: (featureId: string) => boolean
 
   /* admin */
   isAdmin: boolean
@@ -107,19 +135,22 @@ interface AppState {
   loadUsers: () => Promise<void>
   setPlan: (uid: string, plan: Plan) => Promise<void>
   vetoUser: (uid: string) => Promise<void>
+  savePlan: (plan: Partial<AppPlan> & { id?: string }) => Promise<void>
+  deletePlan: (id: string) => Promise<void>
+  setFeaturePremium: (featureId: string, requires: boolean) => Promise<void>
 
   /* modals */
-  modal: 'sale' | 'expense' | 'product' | 'debt' | null
+  modal: 'sale' | 'expense' | 'product' | 'debt' | 'clients' | 'suppliers' | 'employees' | 'stats' | 'catalog' | 'quotes' | 'plans' | null
   setModal: (m: AppState['modal']) => void
 }
 
-/* ── Simulated rates ──────────────────────────────────────────────────────── */
+/* ── Simulated rates — Venezuelan bolívar is 3-digit territory ───────────── */
 function simulateRates(): Rates {
-  const v = () => Math.round((Math.random() - 0.5) * 3 * 100) / 100
+  const v = () => (Math.random() - 0.5) * 1.5
   return {
-    bcv:      Math.round((78.52 + v()) * 100) / 100,
-    dolarHoy: Math.round((80.18 + v()) * 100) / 100,
-    euro:     Math.round((85.34 + v()) * 100) / 100,
+    bcv:      parseFloat((46.23 + v()).toFixed(2)),
+    dolarHoy: parseFloat((47.80 + v()).toFixed(2)),
+    euro:     parseFloat((50.95 + v()).toFixed(2)),
     updatedAt: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
   }
 }
@@ -132,28 +163,18 @@ export const useStore = create<AppState>((set, get) => ({
   isVetted: false,
 
   login: async (email, password) => {
-    // Try sign-in first
     const { data: si, error: sie } = await supabase.auth.signInWithPassword({ email, password })
-    if (!sie && si.user) {
-      await get().upsertProfile()
-      return { ok: true }
-    }
-    // If not found, auto-register
+    if (!sie && si.user) { await get().upsertProfile(); return { ok: true } }
     const { data: su, error: sue } = await supabase.auth.signUp({ email, password })
     if (sue) return { ok: false, msg: sie?.message || sue.message }
-    if (su.user) {
-      await get().upsertProfile()
-      return { ok: true }
-    }
+    if (su.user) { await get().upsertProfile(); return { ok: true } }
     return { ok: false, msg: 'Error inesperado. Intenta de nuevo.' }
   },
 
   loginGoogle: async () => {
     const fake = `google_${Date.now()}@gmail.com`
     const { data: su } = await supabase.auth.signUp({ email: fake, password: 'Galaxy!2024' })
-    if (!su.user) {
-      await supabase.auth.signInWithPassword({ email: fake, password: 'Galaxy!2024' })
-    }
+    if (!su.user) await supabase.auth.signInWithPassword({ email: fake, password: 'Galaxy!2024' })
     await get().upsertProfile()
   },
 
@@ -174,6 +195,7 @@ export const useStore = create<AppState>((set, get) => ({
       await supabase.from('profiles').insert(np)
       set({ user: np, isLoggedIn: true })
     }
+    await Promise.all([get().loadPremiumFeatures(), get().loadAppPlans()])
   },
 
   pollStatus: async () => {
@@ -183,6 +205,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (!data) return
     if (data.is_vetted) { set({ isVetted: true }); return }
     if (data.plan !== user.plan) set({ user: { ...user, plan: data.plan as Plan } })
+    await get().loadPremiumFeatures()
   },
 
   /* nav -------------------------------------------------------------------- */
@@ -248,14 +271,52 @@ export const useStore = create<AppState>((set, get) => ({
     await get().loadInventory()
   },
 
+  deleteSale: async (id) => {
+    await supabase.from('sales').delete().eq('id', id)
+    set(s => ({ sales: s.sales.filter(x => x.id !== id) }))
+  },
+
+  deleteExpense: async (id) => {
+    await supabase.from('expenses').delete().eq('id', id)
+    set(s => ({ expenses: s.expenses.filter(x => x.id !== id) }))
+  },
+
+  deleteDebt: async (id) => {
+    await supabase.from('debts').delete().eq('id', id)
+    set(s => ({ debts: s.debts.filter(x => x.id !== id) }))
+  },
+
+  deleteProduct: async (id) => {
+    await supabase.from('inventory').delete().eq('id', id)
+    set(s => ({ inventory: s.inventory.filter(x => x.id !== id) }))
+  },
+
+  /* plans & features ------------------------------------------------------- */
+  appPlans: [],
+  premiumFeatures: [],
+
+  loadAppPlans: async () => {
+    const { data } = await supabase.from('plans').select('*').order('sort_order', { ascending: true })
+    if (data) set({ appPlans: data as AppPlan[] })
+  },
+
+  loadPremiumFeatures: async () => {
+    const { data } = await supabase.from('premium_features').select('*')
+    if (data) set({ premiumFeatures: data as PremiumFeature[] })
+  },
+
+  isFeaturePremium: (featureId) => {
+    const { premiumFeatures, user } = get()
+    if (user?.plan === 'premium') return false
+    const f = premiumFeatures.find(x => x.id === featureId)
+    return f ? f.requires_premium : false
+  },
+
   /* admin ------------------------------------------------------------------ */
   isAdmin: false,
 
   adminLogin: (u, p) => {
-    if (u === 'Luis31600218' && p === '12345678') {
-      set({ isAdmin: true })
-      return true
-    }
+    if (u === 'Luis31600218' && p === '12345678') { set({ isAdmin: true }); return true }
     return false
   },
 
@@ -293,6 +354,26 @@ export const useStore = create<AppState>((set, get) => ({
     await get().loadUsers()
     const { user } = get()
     if (user?.id === uid) set({ isVetted: true })
+  },
+
+  savePlan: async (plan) => {
+    if (plan.id) {
+      await supabase.from('plans').update({ name: plan.name, price: plan.price, discount: plan.discount, description: plan.description, features: plan.features, is_active: plan.is_active }).eq('id', plan.id)
+    } else {
+      const maxOrder = get().appPlans.reduce((m, p) => Math.max(m, p.sort_order), 0)
+      await supabase.from('plans').insert({ ...plan, sort_order: maxOrder + 1 })
+    }
+    await get().loadAppPlans()
+  },
+
+  deletePlan: async (id) => {
+    await supabase.from('plans').delete().eq('id', id)
+    set(s => ({ appPlans: s.appPlans.filter(p => p.id !== id) }))
+  },
+
+  setFeaturePremium: async (featureId, requires) => {
+    await supabase.from('premium_features').update({ requires_premium: requires, updated_at: new Date().toISOString() }).eq('id', featureId)
+    set(s => ({ premiumFeatures: s.premiumFeatures.map(f => f.id === featureId ? { ...f, requires_premium: requires } : f) }))
   },
 
   /* modals ----------------------------------------------------------------- */

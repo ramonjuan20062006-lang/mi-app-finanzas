@@ -11,6 +11,13 @@ import SaleModal from '../modals/SaleModal'
 import ExpenseModal from '../modals/ExpenseModal'
 import ProductModal from '../modals/ProductModal'
 import DebtModal from '../modals/DebtModal'
+import PlansModal from '../modals/PlansModal'
+import ClientsModal from '../modals/ClientsModal'
+import SuppliersModal from '../modals/SuppliersModal'
+import EmployeesModal from '../modals/EmployeesModal'
+import StatsModal from '../modals/StatsModal'
+import CatalogModal from '../modals/CatalogModal'
+import QuotesModal from '../modals/QuotesModal'
 
 const SCREENS: Record<Tab, React.FC> = {
   home: HomeScreen,
@@ -43,6 +50,13 @@ export default function AppShell() {
       <ExpenseModal />
       <ProductModal />
       <DebtModal />
+      <PlansModal />
+      <ClientsModal />
+      <SuppliersModal />
+      <EmployeesModal />
+      <StatsModal />
+      <CatalogModal />
+      <QuotesModal />
     </div>
   )
 }
